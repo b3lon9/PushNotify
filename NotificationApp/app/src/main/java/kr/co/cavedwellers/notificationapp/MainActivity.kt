@@ -1,94 +1,117 @@
 package kr.co.cavedwellers.notificationapp
 
-import android.annotation.SuppressLint
+import android.Manifest
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
-import android.os.Build
-import androidx.appcompat.app.AppCompatActivity
-import android.os.Bundle
-import android.view.View
-import androidx.core.app.NotificationCompat
-import androidx.core.app.NotificationManagerCompat
-import com.b3lon9.nlog.NLog
-import android.Manifest
 import android.content.pm.PackageManager
+import android.os.Build
+import android.os.Bundle
+import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts.RequestPermission
+import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
+import androidx.core.app.ActivityOptionsCompat
+import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
+import com.b3lon9.nlog.LogLevel
+import com.b3lon9.nlog.NLog
 
-/**
- * 한글과 영문의 만남English and Korean met만남
- * 한글English한글English
- * */
 class MainActivity : AppCompatActivity() {
-    private lateinit var channelId: String
-    private lateinit var channelName: String
-
-    private lateinit var builder: NotificationCompat.Builder
-
+    private lateinit var channelId: String      // 채널 아이디
+    private lateinit var channelName: String    // 채널 이름
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        channelId = this.resources.getString(R.string.notify_channel_id)
-        channelName = this.resources.getString(R.string.notify_channel_name)
-
-        // request permissions
-        if (allPermissionsGranted()) {
-            // Permission Granted
-            createNotificationChannel()
-        } else {
-            // Permission Rejected
-            ActivityCompat.requestPermissions(this, REQUIRED_PERMISSIONS, 123)
-        }
-        // Android 8.0(API:26) 이하(Android 7.1)는 Priority로 우선순위를 정한다
-        // Android 8.0(API:26) 이상부터 ChannelID, ChannelName식별자를 주고,
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            builder = NotificationCompat.Builder(this@MainActivity, channelId)
-                .setSmallIcon(R.mipmap.ic_launcher)
-                .setContentTitle("title")
-                .setContentText("content")
-                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-        } else {
-
-        }
-
+        checkPermission()
     }
 
+    private fun initChannelInfo() {
+        channelId = this.resources.getString(R.string.notify_channel_id)
+        channelName = this.resources.getString(R.string.notify_channel_name)
+    }
 
+    // NotifiactionCompat.Builder 기본 구성
+    private fun getBuilderDefault(context: Context, channelId: String): NotificationCompat.Builder {
+        return NotificationCompat.Builder(context, channelId)
+            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setContentTitle("NotificationApp Title")
+            .setContentText("NotificationApp Text")
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)       // Android 8.0 이하만 설정
+    }
+
+    // 채널 등록 Android 8.0이상부터 필수
+    // register NotificationChannel
+    // NotificationManager.createNotificationChannel(channel)
     private fun createNotificationChannel() {
-        // Create the NotificationChannel, but only API 26+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val descriptionText = this.resources.getString(R.string.notify_channel_description)
-            val importance = NotificationManager.IMPORTANCE_DEFAULT
-            val channel: NotificationChannel = NotificationChannel(channelId, channelName, importance).apply {
-                description = descriptionText
-            }
-
+            val importance: Int = NotificationManager.IMPORTANCE_DEFAULT
+            val channel = NotificationChannel(channelId, channelName, importance)
             val notificationManager: NotificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
             notificationManager.createNotificationChannel(channel)
         }
     }
 
-    @SuppressLint("MissingPermission")
-    public fun notify(v: View) {
-        NLog.l()
-        NLog.d("notify..")
-        with(NotificationManagerCompat.from(this@MainActivity)) {
-            notify(Constants.NotifyID, builder.build())
+    /**
+     * permission
+     * */
+    // 단일 권한 : RequestPermission()
+    // 여러 권한 : RequestMultiplePermission()
+    private val requestPermissionLauncher = registerForActivityResult(RequestPermission()) { isGranted: Boolean ->
+        NLog.v("requestPermissionLauncher.. isGranted:$isGranted")
+        if (isGranted) {
+            initChannelInfo()
+            createNotificationChannel()
+        } else {
+
+        }
+    }
+    private fun checkPermission() {
+        when {
+            // 권한이 수락되어 있는지
+            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED -> {
+                NLog.v("checkPermission.. checkSelfPermission Granted")
+                initChannelInfo()
+                createNotificationChannel()
+            }
+            // 사용자에게 왜 이 권한이 필요한지 설명
+            ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.POST_NOTIFICATIONS) -> {
+                Toast.makeText(this, "권한 설정해야해요", Toast.LENGTH_SHORT).show()
+                NLog.v("checkPermission.. shouldShowRequestPermissionRationale..")
+            } else -> {
+                NLog.v("checkPermission.. cancel..")
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                } else {
+                    ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.POST_NOTIFICATIONS), 12345)
+                }
+            }
         }
     }
 
+    // Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU
+    // 왜냐하면 requestPermissionLauncher에서 허용/거부를 체크하기 때문에
+    // 이중으로 onRequestPermissionResult에서 체크해줄 필요가 없기 때문이다.
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
 
-    // 요청할 권한 목록
-    private val REQUIRED_PERMISSIONS: Array<String> = mutableListOf(
-        Manifest.permission.POST_NOTIFICATIONS
-    ).apply {
-        // 해당 버전에 맞게 설정하는 부분
-    }.toTypedArray()
-
-    private fun allPermissionsGranted(): Boolean = REQUIRED_PERMISSIONS.all {
-        ContextCompat.checkSelfPermission(baseContext, it) == PackageManager.PERMISSION_GRANTED
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+            NLog.l(LogLevel.VERBOSE)
+            NLog.v("onRequestPermissionResult.. requestCode:$requestCode")
+            NLog.v("onRequestPermissionResult.. permissions:$permissions")
+            NLog.v("onRequestPermissionResult.. grantResults:$grantResults")
+            if (grantResults.isNotEmpty() && grantResults.first() == PackageManager.PERMISSION_GRANTED) {
+                NLog.v("onRequestPermissionResult.. init..!!")
+                initChannelInfo()
+                createNotificationChannel()
+            }
+        }
     }
 }
