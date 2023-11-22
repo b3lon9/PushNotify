@@ -1,3 +1,7 @@
 <resources>
     <string name="app_name">FingerTestApp</string>
+
+    <!--channel-->
+    <string name="default_notification_channel_id">neander_test_channel_id</string>
+    <string name="default_notification_channel_name">neander_test_channel_name</string>
 </resources>

@@ -51,6 +51,8 @@ dependencies {
 
     // firebase
     implementation(platform("com.google.firebase:firebase-bom:32.6.0"))
+        // cloud messaging
+    implementation("com.google.firebase:firebase-messaging-ktx:23.3.1")
 
     // finger push
     implementation(files("libs/fingerpush_3.7.6.aar"))
