@@ -1,0 +1,7 @@
+/build
+
+/src/test
+/src/androidTest
+
+/src/main/res
+/src/main/res/mipmap*
