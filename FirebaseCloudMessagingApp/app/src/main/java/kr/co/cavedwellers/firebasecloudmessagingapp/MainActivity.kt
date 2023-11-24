@@ -8,6 +8,7 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import com.b3lon9.nlog.LogLevel
 import com.b3lon9.nlog.NLog
 import com.google.android.gms.tasks.OnCompleteListener
 import com.google.firebase.ktx.Firebase
@@ -19,10 +20,12 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        NLog.l(level= LogLevel.DEBUG, count = 20)
+        NLog.d("onCreate..")
         // FCM이 자동 초기화 설정
         // Firebase.messaging.isAutoInitEnabled = true      // 다시 자동 초기화됨
 
-        askNotificationPermission()
+        checkNotificationPermission()
         checkToken()
     }
 
@@ -59,7 +62,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun askNotificationPermission() {
+    private fun checkNotificationPermission() {
         // TIRAMISU = API33
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             // check POST_NOTIFICATIONS permission
